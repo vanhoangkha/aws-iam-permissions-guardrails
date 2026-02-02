@@ -21,4 +21,10 @@ jobs:
         run: pip install pyyaml
       
       - name: Run tests
-        run: python -m pytest tests/ -v
+        run: python -m unittest discover tests/ -v
+      
+      - name: Validate JSON syntax
+        run: |
+          for f in deployable-policies/*.json; do
+            python -m json.tool "$f" > /dev/null && echo "✓ $f"
+          done

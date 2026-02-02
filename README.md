@@ -1,62 +1,97 @@
 # AWS IAM Permissions Guardrails
 
-A collection of **97 security guardrails** for AWS environments using Service Control Policies (SCPs) and IAM permission boundaries.
+[![Validate SCPs](https://github.com/vanhoangkha/aws-iam-permissions-guardrails/actions/workflows/validate.yml/badge.svg)](https://github.com/vanhoangkha/aws-iam-permissions-guardrails/actions/workflows/validate.yml)
+[![License](https://img.shields.io/badge/License-MIT--0-blue.svg)](LICENSE)
+
+A comprehensive collection of **95 security guardrails** (26 SCPs + 69 IAM policies) for AWS Organizations, with ready-to-deploy templates and automation scripts.
+
+## Features
+
+- **95 Pre-built Guardrails** - Covering 20+ AWS services
+- **Production-Ready SCPs** - Validated and under AWS size limits
+- **One-Click Deployment** - CloudFormation and Python scripts
+- **CI/CD Integration** - GitHub Actions workflow included
+- **Comprehensive Documentation** - Best practices and quick reference
 
 ## Quick Start
 
+### Option 1: CloudFormation
+
 ```bash
-# Deploy critical SCPs to your AWS Organization
-cd deployable-policies
-aws organizations create-policy --name "Critical-Security-Guardrails" \
-  --type SERVICE_CONTROL_POLICY \
-  --content file://scp-critical-security.json
+aws cloudformation deploy \
+  --template-file cloudformation/deploy-all-scps.yaml \
+  --stack-name iam-guardrails \
+  --parameter-overrides \
+    InfrastructureAutomationRole=MyTerraformRole \
+    SecurityAdminRole=MySecurityRole
+```
+
+### Option 2: Python Script
+
+```bash
+# Deploy all SCPs to an OU
+python3 scripts/deploy_scps.py -t ou-xxxx-xxxxxxxx
+
+# Dry run first
+python3 scripts/deploy_scps.py --dry-run
 ```
 
 ## Repository Structure
 
 ```
-├── COMPLETE_BEST_PRACTICES.md    # Full documentation of all 97 guardrails
-├── deployable-policies/          # Ready-to-deploy SCP JSON files
+├── COMPLETE_BEST_PRACTICES.md    # Full documentation (95 guardrails)
+├── QUICK_REFERENCE.md            # Deployment checklist
+├── deployable-policies/          # Production-ready SCP JSON files
 │   ├── scp-critical-security.json
 │   ├── scp-data-protection.json
 │   ├── scp-infrastructure-protection.json
 │   └── scp-organization-protection.json
-├── cloudformation/               # CloudFormation templates
+├── cloudformation/               # IaC templates
 │   └── deploy-all-scps.yaml
-├── guardrails/                   # Source guardrail definitions by service
-└── access-analyzer/              # IAM Access Analyzer automation
+├── scripts/                      # Automation tools
+│   ├── deploy_scps.py
+│   └── analyze_policy.py
+├── guardrails/                   # Source guardrail definitions
+└── tests/                        # Validation tests
 ```
 
-## Guardrail Categories
+## SCP Categories
 
-| Category | Count | Priority |
-|----------|-------|----------|
-| Root User & IAM Protection | 5 SCPs | Critical |
-| Security Services (CloudTrail, GuardDuty, Config) | 5 SCPs | Critical |
-| Data Protection (S3, KMS, Glacier) | 7 SCPs | High |
-| Infrastructure Protection | 5 SCPs | High |
-| Organization & Account | 4 SCPs | Medium |
-| IAM Permission Boundaries | 11 policies | Variable |
-| Service-Specific Controls | 60+ checks | Variable |
-
-## Critical SCPs (Deploy First)
-
-| ID | Control | Actions Blocked |
-|----|---------|-----------------|
-| SCP-IAM-1 | Block root user | All actions |
-| SCP-CLOUDTRAIL-1 | Protect CloudTrail | Delete, Stop, Update |
-| SCP-GUARDDUTY-1 | Protect GuardDuty | Delete, Disable |
-| SCP-CONFIG-1 | Protect AWS Config | Delete, Stop |
-| SCP-S3-1 | Protect S3 public access block | PutAccountPublicAccessBlock |
-| SCP-S3-2 | Require S3 encryption | Unencrypted PutObject |
-| SCP-KMS-1 | Protect KMS keys | ScheduleKeyDeletion |
+| Category | Priority | Description |
+|----------|----------|-------------|
+| Critical Security | High | Root user restrictions, security service protection |
+| Data Protection | High | S3, KMS, RDS encryption enforcement |
+| Infrastructure | Medium | EC2, VPC, network controls |
+| Organization | Medium | Account and organization protection |
 
 ## Documentation
 
-- **[COMPLETE_BEST_PRACTICES.md](COMPLETE_BEST_PRACTICES.md)** - Full reference of all 97 guardrails
-- **[deployable-policies/](deployable-policies/)** - Ready-to-deploy JSON policies
-- **[cloudformation/](cloudformation/)** - Infrastructure as Code templates
+- [Complete Best Practices](COMPLETE_BEST_PRACTICES.md) - All 95 guardrails documented
+- [Quick Reference](QUICK_REFERENCE.md) - Deployment checklist and commands
+- [Deployable Policies](deployable-policies/README.md) - SCP usage guide
+- [CloudFormation Guide](cloudformation/README.md) - Template documentation
+- [Scripts Guide](scripts/README.md) - Automation tools
+
+## Requirements
+
+- AWS Organizations with SCPs enabled
+- Python 3.8+ (for scripts)
+- AWS CLI configured with appropriate permissions
+
+## Testing
+
+```bash
+python3 -m unittest discover tests/ -v
+```
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## Security
+
+See [CONTRIBUTING.md](CONTRIBUTING.md#security-issue-notifications) for reporting security issues.
 
 ## License
 
-This library is licensed under the MIT-0 License. See the LICENSE file.
+This project is licensed under the MIT-0 License. See [LICENSE](LICENSE).
