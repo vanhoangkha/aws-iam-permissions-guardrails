@@ -1,0 +1,72 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ProtectS3PublicAccessBlock",
+      "Effect": "Deny",
+      "Action": "s3:PutAccountPublicAccessBlock",
+      "Resource": "*",
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalARN": "arn:aws:iam::*:role/SECURITY_ADMIN_ROLE"
+        }
+      }
+    },
+    {
+      "Sid": "RequireS3Encryption",
+      "Effect": "Deny",
+      "Action": "s3:PutObject",
+      "Resource": "arn:aws:s3:::*/*",
+      "Condition": {
+        "Null": {
+          "s3:x-amz-server-side-encryption": "true"
+        }
+      }
+    },
+    {
+      "Sid": "PreventPublicS3Objects",
+      "Effect": "Deny",
+      "Action": [
+        "s3:PutObjectAcl",
+        "s3:PutObjectVersionAcl"
+      ],
+      "Resource": "arn:aws:s3:::*/*",
+      "Condition": {
+        "StringNotEquals": {
+          "s3:x-amz-acl": "private"
+        }
+      }
+    },
+    {
+      "Sid": "PreventKMSKeyDeletion",
+      "Effect": "Deny",
+      "Action": "kms:ScheduleKeyDeletion",
+      "Resource": "*",
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalArn": "arn:aws:iam::*:role/ENCRYPTION_ADMIN_ROLE"
+        }
+      }
+    },
+    {
+      "Sid": "PreventGlacierDeletion",
+      "Effect": "Deny",
+      "Action": [
+        "glacier:DeleteArchive",
+        "glacier:DeleteVault"
+      ],
+      "Resource": "arn:aws:glacier:*:*:vaults/*"
+    },
+    {
+      "Sid": "RequireEBSEncryption",
+      "Effect": "Deny",
+      "Action": "ec2:DisableEbsEncryptionByDefault",
+      "Resource": "*",
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalARN": "arn:aws:iam::*:role/INFRASTRUCTURE_AUTOMATION_ROLE"
+        }
+      }
+    }
+  ]
+}

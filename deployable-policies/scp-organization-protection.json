@@ -1,0 +1,76 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "PreventLeavingOrganization",
+      "Effect": "Deny",
+      "Action": [
+        "organizations:LeaveOrganization",
+        "organizations:DeleteOrganization"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalARN": "arn:aws:iam::*:role/INFRASTRUCTURE_AUTOMATION_ROLE"
+        }
+      }
+    },
+    {
+      "Sid": "PreventExternalResourceSharing",
+      "Effect": "Deny",
+      "Action": "*",
+      "Resource": "*",
+      "Condition": {
+        "Bool": {
+          "ram:AllowsExternalPrincipals": "true"
+        }
+      }
+    },
+    {
+      "Sid": "PreventRegionChanges",
+      "Effect": "Deny",
+      "Action": [
+        "account:EnableRegion",
+        "account:DisableRegion"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalARN": "arn:aws:iam::*:role/INFRASTRUCTURE_AUTOMATION_ROLE"
+        }
+      }
+    },
+    {
+      "Sid": "ProtectBillingSettings",
+      "Effect": "Deny",
+      "Action": [
+        "aws-portal:ModifyAccount",
+        "aws-portal:ModifyBilling",
+        "aws-portal:ModifyPaymentMethods"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalARN": "arn:aws:iam::*:role/BILLING_ADMIN_ROLE"
+        }
+      }
+    },
+    {
+      "Sid": "RestrictIAMUserCreation",
+      "Effect": "Deny",
+      "Action": [
+        "iam:AttachUserPolicy",
+        "iam:CreateAccessKey",
+        "iam:CreateUser",
+        "iam:PutUserPolicy",
+        "iam:DeleteSAMLProvider"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalARN": "arn:aws:iam::*:role/IDENTITY_ADMIN_ROLE"
+        }
+      }
+    }
+  ]
+}

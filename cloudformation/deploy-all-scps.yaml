@@ -1,0 +1,233 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Deploy all IAM Permissions Guardrails SCPs
+
+Parameters:
+  AutomationRoleName:
+    Type: String
+    Default: OrganizationAccountAccessRole
+    Description: Role name exempt from SCPs (infrastructure automation)
+  
+  SecurityAdminRoleName:
+    Type: String
+    Default: SecurityAdminRole
+    Description: Role name for security administration
+  
+  EncryptionAdminRoleName:
+    Type: String
+    Default: EncryptionAdminRole
+    Description: Role name for KMS administration
+  
+  BillingAdminRoleName:
+    Type: String
+    Default: BillingAdminRole
+    Description: Role name for billing administration
+  
+  ProtectedRolePrefix:
+    Type: String
+    Default: aws-controltower-
+    Description: Prefix for protected IAM roles
+  
+  ProtectedLogGroupPrefix:
+    Type: String
+    Default: aws-controltower/
+    Description: Prefix for protected CloudWatch log groups
+
+Resources:
+  CriticalSecuritySCP:
+    Type: AWS::Organizations::Policy
+    Properties:
+      Name: Critical-Security-Guardrails
+      Description: Blocks root user, protects CloudTrail/GuardDuty/Config
+      Type: SERVICE_CONTROL_POLICY
+      Content:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyRootUser
+            Effect: Deny
+            Action: '*'
+            Resource: '*'
+            Condition:
+              ArnLike:
+                aws:PrincipalArn: arn:aws:iam::*:root
+          - Sid: DenyRootAccessKeys
+            Effect: Deny
+            Action: iam:CreateAccessKey
+            Resource: arn:aws:iam::*:root
+          - Sid: ProtectCloudTrail
+            Effect: Deny
+            Action:
+              - cloudtrail:DeleteTrail
+              - cloudtrail:PutEventSelectors
+              - cloudtrail:StopLogging
+              - cloudtrail:UpdateTrail
+            Resource: '*'
+            Condition:
+              ArnNotLike:
+                aws:PrincipalARN: !Sub arn:aws:iam::*:role/${AutomationRoleName}
+          - Sid: ProtectGuardDuty
+            Effect: Deny
+            Action:
+              - guardduty:DeclineInvitations
+              - guardduty:Disassociate*
+              - guardduty:DeleteDetector
+              - guardduty:DeleteInvitations
+              - guardduty:DeleteIPSet
+              - guardduty:DeleteMembers
+              - guardduty:DeleteThreatIntelSet
+              - guardduty:StopMonitoringMembers
+              - guardduty:UpdateDetector
+            Resource: '*'
+            Condition:
+              ArnNotLike:
+                aws:PrincipalARN: !Sub arn:aws:iam::*:role/${AutomationRoleName}
+          - Sid: ProtectAWSConfig
+            Effect: Deny
+            Action:
+              - config:DeleteConfigurationAggregator
+              - config:DeleteConfigurationRecorder
+              - config:DeleteDeliveryChannel
+              - config:DeleteRetentionConfiguration
+              - config:StopConfigurationRecorder
+            Resource: '*'
+            Condition:
+              ArnNotLike:
+                aws:PrincipalARN: !Sub arn:aws:iam::*:role/${AutomationRoleName}
+
+  DataProtectionSCP:
+    Type: AWS::Organizations::Policy
+    Properties:
+      Name: Data-Protection-Guardrails
+      Description: S3 encryption, KMS protection, Glacier protection
+      Type: SERVICE_CONTROL_POLICY
+      Content:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: ProtectS3PublicAccessBlock
+            Effect: Deny
+            Action: s3:PutAccountPublicAccessBlock
+            Resource: '*'
+            Condition:
+              ArnNotLike:
+                aws:PrincipalARN: !Sub arn:aws:iam::*:role/${SecurityAdminRoleName}
+          - Sid: RequireS3Encryption
+            Effect: Deny
+            Action: s3:PutObject
+            Resource: arn:aws:s3:::*/*
+            Condition:
+              'Null':
+                s3:x-amz-server-side-encryption: 'true'
+          - Sid: PreventPublicS3Objects
+            Effect: Deny
+            Action:
+              - s3:PutObjectAcl
+              - s3:PutObjectVersionAcl
+            Resource: arn:aws:s3:::*/*
+            Condition:
+              StringNotEquals:
+                s3:x-amz-acl: private
+          - Sid: PreventKMSKeyDeletion
+            Effect: Deny
+            Action: kms:ScheduleKeyDeletion
+            Resource: '*'
+            Condition:
+              ArnNotLike:
+                aws:PrincipalArn: !Sub arn:aws:iam::*:role/${EncryptionAdminRoleName}
+          - Sid: PreventGlacierDeletion
+            Effect: Deny
+            Action:
+              - glacier:DeleteArchive
+              - glacier:DeleteVault
+            Resource: arn:aws:glacier:*:*:vaults/*
+
+  InfrastructureProtectionSCP:
+    Type: AWS::Organizations::Policy
+    Properties:
+      Name: Infrastructure-Protection-Guardrails
+      Description: IAM roles, CloudFormation, Lambda protection
+      Type: SERVICE_CONTROL_POLICY
+      Content:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: ProtectIAMRoles
+            Effect: Deny
+            Action:
+              - iam:AttachRolePolicy
+              - iam:DeleteRole
+              - iam:DeleteRolePolicy
+              - iam:DetachRolePolicy
+              - iam:PutRolePolicy
+              - iam:UpdateAssumeRolePolicy
+            Resource:
+              - !Sub arn:aws:iam::*:role/${ProtectedRolePrefix}*
+            Condition:
+              ArnNotLike:
+                aws:PrincipalARN: !Sub arn:aws:iam::*:role/${AutomationRoleName}
+          - Sid: PreventDefaultVPC
+            Effect: Deny
+            Action:
+              - ec2:CreateDefaultSubnet
+              - ec2:CreateDefaultVpc
+            Resource: '*'
+          - Sid: RequireEBSEncryption
+            Effect: Deny
+            Action: ec2:DisableEbsEncryptionByDefault
+            Resource: '*'
+
+  OrganizationProtectionSCP:
+    Type: AWS::Organizations::Policy
+    Properties:
+      Name: Organization-Protection-Guardrails
+      Description: Org leave prevention, RAM, billing protection
+      Type: SERVICE_CONTROL_POLICY
+      Content:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: PreventLeavingOrganization
+            Effect: Deny
+            Action:
+              - organizations:LeaveOrganization
+              - organizations:DeleteOrganization
+            Resource: '*'
+          - Sid: PreventExternalResourceSharing
+            Effect: Deny
+            Action: '*'
+            Resource: '*'
+            Condition:
+              Bool:
+                ram:AllowsExternalPrincipals: 'true'
+          - Sid: PreventRegionChanges
+            Effect: Deny
+            Action:
+              - account:EnableRegion
+              - account:DisableRegion
+            Resource: '*'
+            Condition:
+              ArnNotLike:
+                aws:PrincipalARN: !Sub arn:aws:iam::*:role/${AutomationRoleName}
+          - Sid: ProtectBillingSettings
+            Effect: Deny
+            Action:
+              - aws-portal:ModifyAccount
+              - aws-portal:ModifyBilling
+              - aws-portal:ModifyPaymentMethods
+            Resource: '*'
+            Condition:
+              ArnNotLike:
+                aws:PrincipalARN: !Sub arn:aws:iam::*:role/${BillingAdminRoleName}
+
+Outputs:
+  CriticalSecuritySCPId:
+    Description: Critical Security SCP Policy ID
+    Value: !Ref CriticalSecuritySCP
+  
+  DataProtectionSCPId:
+    Description: Data Protection SCP Policy ID
+    Value: !Ref DataProtectionSCP
+  
+  InfrastructureProtectionSCPId:
+    Description: Infrastructure Protection SCP Policy ID
+    Value: !Ref InfrastructureProtectionSCP
+  
+  OrganizationProtectionSCPId:
+    Description: Organization Protection SCP Policy ID
+    Value: !Ref OrganizationProtectionSCP

@@ -1,0 +1,101 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ProtectIAMRoles",
+      "Effect": "Deny",
+      "Action": [
+        "iam:AttachRolePolicy",
+        "iam:CreateRole",
+        "iam:DeleteRole",
+        "iam:DeleteRolePermissionsBoundary",
+        "iam:DeleteRolePolicy",
+        "iam:DetachRolePolicy",
+        "iam:PutRolePermissionsBoundary",
+        "iam:PutRolePolicy",
+        "iam:UpdateRole",
+        "iam:UpdateRoleDescription",
+        "iam:UpdateAssumeRolePolicy"
+      ],
+      "Resource": [
+        "arn:aws:iam::*:role/PROTECTED_ROLE_PREFIX*",
+        "arn:aws:iam::*:role/aws-controltower-*",
+        "arn:aws:iam::*:role/AWSControlTower*"
+      ],
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalARN": "arn:aws:iam::*:role/INFRASTRUCTURE_AUTOMATION_ROLE"
+        }
+      }
+    },
+    {
+      "Sid": "ProtectCloudFormationStacks",
+      "Effect": "Deny",
+      "Action": [
+        "cloudformation:CreateChangeSet",
+        "cloudformation:DeleteChangeSet",
+        "cloudformation:DeleteStack",
+        "cloudformation:ExecuteChangeSet",
+        "cloudformation:SetStackPolicy",
+        "cloudformation:UpdateStack",
+        "cloudformation:UpdateTerminationProtection"
+      ],
+      "Resource": [
+        "arn:aws:cloudformation:*:*:stack/PROTECTED_STACK_PREFIX*",
+        "arn:aws:cloudformation:*:*:stack/StackSet-*"
+      ],
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalARN": "arn:aws:iam::*:role/INFRASTRUCTURE_AUTOMATION_ROLE"
+        }
+      }
+    },
+    {
+      "Sid": "ProtectLambdaFunctions",
+      "Effect": "Deny",
+      "Action": [
+        "lambda:AddPermission",
+        "lambda:CreateEventSourceMapping",
+        "lambda:DeleteEventSourceMapping",
+        "lambda:DeleteFunction",
+        "lambda:DeleteFunctionConcurrency",
+        "lambda:PutFunctionConcurrency",
+        "lambda:RemovePermission",
+        "lambda:UpdateEventSourceMapping",
+        "lambda:UpdateFunctionCode",
+        "lambda:UpdateFunctionConfiguration"
+      ],
+      "Resource": "arn:aws:lambda:*:*:function:PROTECTED_FUNCTION_PREFIX*",
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalArn": "arn:aws:iam::*:role/INFRASTRUCTURE_AUTOMATION_ROLE"
+        }
+      }
+    },
+    {
+      "Sid": "PreventDefaultVPC",
+      "Effect": "Deny",
+      "Action": [
+        "ec2:CreateDefaultSubnet",
+        "ec2:CreateDefaultVpc"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ProtectSNSTopics",
+      "Effect": "Deny",
+      "Action": [
+        "sns:AddPermission",
+        "sns:DeleteTopic",
+        "sns:RemovePermission",
+        "sns:SetTopicAttributes"
+      ],
+      "Resource": "arn:aws:sns:*:*:PROTECTED_TOPIC_PREFIX*",
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalArn": "arn:aws:iam::*:role/INFRASTRUCTURE_AUTOMATION_ROLE"
+        }
+      }
+    }
+  ]
+}
