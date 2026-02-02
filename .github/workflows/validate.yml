@@ -26,5 +26,5 @@ jobs:
       - name: Validate JSON syntax
         run: |
           for f in deployable-policies/*.json; do
-            python -m json.tool "$f" > /dev/null && echo "✓ $f"
+            python -m json.tool "$f" > /dev/null && echo "OK: $f"
           done
